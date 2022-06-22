@@ -1,0 +1,58 @@
+#!/bin/bash
+###profile
+profile=cts-adm
+#
+###server_config
+#web_server
+web_server=i-072dc057e8334a278
+web_server_domain_name=ctsadm
+#cron_server
+cron_server=i-038eeceafdad0bef3
+cron_server_domain_name=ctsadm-proctoring-pb
+#dotnet_jail=i-076512d8122743822
+#proc_server=i-086dfab8a55dd8ed5
+#turn_server=i-0110cd6225a98fcfc
+#guacamole_server=i-01030a610efc9e76c
+#
+#
+#
+##redis_cache_config
+redis_cluster_id=ctsadm-session
+redis_cache_subnet_group=ctsadm
+redis_security_group_id=sg-057bcbeb04fa623af
+redis_node-type=cache.t3.micro
+backup_retention_period=1
+#
+#
+##memcached_cache_config
+memcached_cluster_id=ctsadm-appcache
+memcached_cache_subnet_group=ctsadm
+memcached_security_group_id=sg-057bcbeb04fa623af
+memcached_node_type=cache.t3.micro
+#
+#
+##db_config
+db_identifier=ctsadm
+#
+#Mail_Config
+Domain=tekstack.com
+#
+##commands
+#
+#redis
+aws elasticache create-cache-cluster --cache-cluster-id $redis_cluster_id --engine redis --cache-node-type $redis_node-type --num-cache-nodes 1 --cache-subnet-group-name $redis_cache_subnet_group --security-group-ids $redis_security_group_id --snapshot-retention-limit $backup_retention_period --profile $profile
+#memcached
+aws elasticache create-cache-cluster --cache-cluster-id $memcached_cluster_id --engine memcached --cache-node-type $memcached_node_type --num-cache-nodes 1 --cache-subnet-group-name $memcached_cache_subnet_group --security-group-ids $memcached_security_group_id --profile $profile
+#rds
+aws rds start-db-instance --db-instance-identifier $ctsadm --profile $profile
+#ec2
+
+aws ec2 start-instances --instance-ids $web_server --profile $profile
+CurrentPublicIP=aws ec2 describe-instances --instance-id $web_server --query "Reservations[*].Instances[*].PublicIpAddress"  --output text --profile $profile
+Name=$web_server_domain_name
+curl -s -X PUT "https://api.godaddy.com/v1/domains/${Domain}/records/A/${Name}" -H "Authorization: sso-key ${Key}:${Secret}" -H "Content-Type: application/json" -d "[{\"data\": \"${CurrentPublicIP}\"}]"
+
+aws ec2 start-instances --instance-ids $cron_server --profile $profile
+CurrentPublicIP=aws ec2 describe-instances --instance-id $cron_server --query "Reservations[*].Instances[*].PublicIpAddress"  --output text --profile $profile
+Name=$cron_server_domain_name
+curl -s -X PUT "https://api.godaddy.com/v1/domains/${Domain}/records/A/${Name}" -H "Authorization: sso-key ${Key}:${Secret}" -H "Content-Type: application/json" -d "[{\"data\": \"${CurrentPublicIP}\"}]"
